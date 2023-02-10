@@ -1,8 +1,9 @@
 use frontier_template_runtime::{
-	AccountId, AuraConfig, BalancesConfig, EVMConfig, EthereumConfig, GenesisConfig, GrandpaConfig,
+	AccountId, AuraConfig, Balance, BalancesConfig, EVMConfig, EthereumConfig, GenesisConfig, GrandpaConfig,
 	Signature, SudoConfig, SystemConfig, WASM_BINARY,
+	currency::DOLLARS,
 };
-use sc_service::ChainType;
+use sc_service::{ChainType, Properties};
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{sr25519, Pair, Public, H160, U256};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
@@ -35,6 +36,14 @@ where
 /// Generate an Aura authority key.
 pub fn authority_keys_from_seed(s: &str) -> (AuraId, GrandpaId) {
 	(get_from_seed::<AuraId>(s), get_from_seed::<GrandpaId>(s))
+}
+
+pub fn properties() -> Properties {
+	let mut p = Properties::new();
+	p.insert("ss58format".into(), 42.into());
+	p.insert("tokenDecimals".into(), 18.into());
+	p.insert("tokenSymbol".into(), "NMC".into());
+	p
 }
 
 pub fn development_config() -> Result<ChainSpec, String> {
@@ -71,7 +80,7 @@ pub fn development_config() -> Result<ChainSpec, String> {
 		None,
 		None,
 		// Properties
-		None,
+		Some(properties()),
 		// Extensions
 		None,
 	))
@@ -122,7 +131,7 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 		None,
 		None,
 		// Properties
-		None,
+		Some(properties()),
 		// Extensions
 		None,
 	))
@@ -136,17 +145,19 @@ fn testnet_genesis(
 	endowed_accounts: Vec<AccountId>,
 	_enable_println: bool,
 ) -> GenesisConfig {
+	const ENDOWMENT: Balance = 3_750_000_000_000 * DOLLARS;
+	const STASH: Balance = ENDOWMENT / 1000;
 	GenesisConfig {
 		system: SystemConfig {
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),
 		},
 		balances: BalancesConfig {
-			// Configure endowed accounts with initial balance of 1 << 60.
+			// Configure endowed accounts with initial endowment balance.
 			balances: endowed_accounts
 				.iter()
 				.cloned()
-				.map(|k| (k, 1 << 60))
+				.map(|k| (k, ENDOWMENT))
 				.collect(),
 		},
 		aura: AuraConfig {
